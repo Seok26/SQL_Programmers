@@ -1,0 +1,228 @@
+Programmers Oracle Lv4 ~ Lv5 Answer
+
+Date : 23.12.15
+Author : OYS
+
+
+#1. 상품을 구매한 회원 비율 구하기(Lv5)
+with join_2021 as
+(
+    select user_id from user_info
+    where to_char(joined, 'YYYYMMDD') between '20210101' and '20211231'
+)
+select year, 
+       to_number(month), 
+       count(distinct user_id) as puchased_users,
+       round(count(distinct user_id) / (select count(*) from join_2021), 1)as purchased_ratio
+       from 
+       (
+select to_char(b.sales_date, 'YYYY') as year,
+       to_char(b.sales_date, 'MM') as month,
+       a.user_id
+from join_2021 a, online_sale b
+where 1 = 1
+and a.user_id = b.user_id)
+group by year, month
+order by year, month;
+
+
+#2. 자동차 대여 기록 별 대여 금액 구하기(Lv4)
+select c.history_id, c.daily_fee * c.rent_day * d.discount_rate as fee from (
+SELECT b.history_id, a.daily_fee, end_date - start_date + 1 as rent_day,
+       case when end_date - start_date + 1 >= 90 then 3
+            when end_date - start_date + 1 >= 30 then 2
+            when end_date - start_date + 1 >= 7 then 1
+        else 0 end discount_group
+from CAR_RENTAL_COMPANY_CAR a, CAR_RENTAL_COMPANY_RENTAL_HISTORY b
+where 1 = 1
+and a.car_type = '트럭'
+and a.car_id = b.car_id) c, 
+(select car_type, 1 - discount_rate * 0.01 as discount_rate , case when duration_type = '90일 이상' then 3
+                       when duration_type = '30일 이상' then 2
+                       when duration_type = '7일 이상' then 1 end discount_group
+from CAR_RENTAL_COMPANY_DISCOUNT_PLAN where car_type = '트럭'
+ union all
+ select '트럭', 1 as discount_rate, 0 as discount_group from dual
+) d
+where c.discount_group = d.discount_group
+order by c.daily_fee * c.rent_day * d.discount_rate desc, c.history_id desc;
+
+#3. 특정 기간동안 대여 가능한 자동차들의 대여비용 구하기(Lv4)
+select * from (
+select a.car_id, a.car_type, round((a.daily_fee * (1 - (0.01 * c.discount_rate))) * 30, 0) as price from CAR_RENTAL_COMPANY_CAR a, (
+select car_id, sum(point) from (
+select car_id, start_date, end_date, 
+       case when to_date('20221101000000', 'YYYYMMDDHH24MISS') between start_date and end_date then 1
+            when to_date('20221130235959', 'YYYYMMDDHH24MISS') between start_date and end_date then 1
+            else 0 end point
+from CAR_RENTAL_COMPANY_RENTAL_HISTORY)
+group by car_id
+having sum(point) = 0) b, CAR_RENTAL_COMPANY_DISCOUNT_PLAN c
+where 1 = 1
+and a.car_type in ('SUV', '세단')
+and a.car_id = b.car_id
+and a.car_type = c.car_type
+and c.duration_type = '30일 이상')
+where price between 500000 and 1999999
+order by price desc, car_type, car_id;
+
+
+#4. 입양 시각 구하기(2) (Lv4)
+with base as(
+select to_number(hour) as hour, count(*) as cnt from (
+SELECT to_char(datetime, 'HH24') as hour from animal_outs)
+group by hour)
+select 0, nvl((select cnt from base where hour = 0), 0) from dual
+union all
+select 1, nvl((select cnt from base where hour = 1), 0) from dual
+union all
+select 2, nvl((select cnt from base where hour = 2), 0) from dual
+union all
+select 3, nvl((select cnt from base where hour = 3), 0) from dual
+union all
+select 4, nvl((select cnt from base where hour = 4), 0) from dual
+union all
+select 5, nvl((select cnt from base where hour = 5), 0) from dual
+union all
+select 6, nvl((select cnt from base where hour = 6), 0) from dual
+union all
+select 7, nvl((select cnt from base where hour = 7), 0) from dual
+union all
+select 8, nvl((select cnt from base where hour = 8), 0) from dual
+union all
+select 9, nvl((select cnt from base where hour = 9), 0) from dual
+union all
+select 10, nvl((select cnt from base where hour = 10), 0) from dual
+union all
+select 11, nvl((select cnt from base where hour = 11), 0) from dual
+union all
+select 12, nvl((select cnt from base where hour = 12), 0) from dual
+union all
+select 13, nvl((select cnt from base where hour = 13), 0) from dual
+union all
+select 14, nvl((select cnt from base where hour = 14), 0) from dual
+union all
+select 15, nvl((select cnt from base where hour = 15), 0) from dual
+union all
+select 16, nvl((select cnt from base where hour = 16), 0) from dual
+union all
+select 17, nvl((select cnt from base where hour = 17), 0) from dual
+union all
+select 18, nvl((select cnt from base where hour = 18), 0) from dual
+union all
+select 19, nvl((select cnt from base where hour = 19), 0) from dual
+union all
+select 20, nvl((select cnt from base where hour = 20), 0) from dual
+union all
+select 21, nvl((select cnt from base where hour = 21), 0) from dual
+union all
+select 22, nvl((select cnt from base where hour = 22), 0) from dual
+union all
+select 23, nvl((select cnt from base where hour = 23), 0) from dual;
+
+#5. 오프라인/온라인 판매 데이터 통합하기(Lv4)
+select sales_date, product_id, user_id, sum(sales_amount) from (
+select to_char(sales_date, 'YYYY-MM-DD') as sales_date, product_id, user_id, sales_amount from online_sale
+where sales_date between to_date('20220301', 'YYYYMMDD') and to_date('20220331', 'YYYYMMDD')
+union all
+select to_char(sales_date, 'YYYY-MM-DD') as sales_date, product_id, null, sales_amount from offline_sale
+where sales_date between to_date('20220301', 'YYYYMMDD') and to_date('20220331', 'YYYYMMDD'))
+group by sales_date, product_id, user_id
+order by sales_date, product_id, user_id;
+
+#6. 그룹별 조건에 맞는 식당 목록 출력하기(Lv4)
+with target as
+(
+select member_id from(
+SELECT member_id, count(*) from rest_review group by member_id order by count(*) desc)
+where rownum < 2
+)
+select a.member_name, b.review_text, to_char(b.review_date, 'YYYY-MM-DD') from member_profile a, rest_review b, target c
+where 1 = 1
+and a.member_id = c.member_id
+and b.member_id = c.member_id
+order by b.review_date, b.review_text;
+
+#7. 주문량이 많은 아이스크림들 조회하기(Lv4)
+select flavor from (
+select flavor, sum(total_order) from (
+select flavor, total_order from first_half
+union all
+select flavor, total_order from july)
+group by flavor
+order by sum(total_order) desc)
+where rownum < 4;
+
+#8. 저자 별 카테고리 별 매출액 집계하기(Lv4)
+select author_id, author_name, category, sum(total_sales) from (
+SELECT b.author_id, b.author_name, a.category, a.price * c.sales as total_sales from book a, author b, book_sales c
+where 1 = 1
+and to_char(c.sales_date, 'YYYYMM') = '202201'
+and a.author_id = b.author_id
+and a.book_id = c.book_id)
+group by author_id, author_name, category
+order by author_id, category desc;
+
+#9. 우유와 요거트가 담긴 장바구니(Lv4)
+select A.cart_id from
+(select * from cart_products
+where name = 'Yogurt') A,
+(select * from cart_products
+where name = 'Milk') B
+where A.cart_id = B.cart_id
+order by A.cart_id;
+
+#10. 서울에 위치한 식당 목록 출력하기(Lv4)
+select rest_id, rest_name, food_type, favorites, address, round(avg(review_score), 2) from (
+SELECT a.rest_id, a.rest_name, a.food_type, a.favorites, a.address, b.review_score from rest_info a, rest_review b
+where a.rest_id = b.rest_id
+and a.address like '서울%')
+group by rest_id, rest_name, food_type, favorites, address
+order by avg(review_score) desc, favorites desc;
+
+#11. 년, 월, 성별 별 상품 구매 회원 수 구하기(Lv4)
+select year, to_number(month), gender, count(*) from (
+select year, month, gender, user_id, count(*) from (
+select to_char(sa.sales_date, 'YYYY') as year,
+       to_char(sa.sales_date, 'MM') as month,
+       us.gender,
+       us.user_id
+from user_info us, online_sale sa
+where us.user_id = sa.user_id
+and us.gender is not null)
+group by year, month, gender, user_id)
+group by year, month, gender
+order by year, month, gender;
+
+#12. 취소되지 않은 진료 예약 조회하기(Lv4)
+SELECT a.apnt_no, p.pt_name, p.pt_no, d.mcdp_cd, d.dr_name, a.apnt_ymd from patient p, doctor d, appointment a
+where 1 = 1
+and d.dr_id = a.mddr_id -- doctor <> appointment
+and p.pt_no = a.pt_no -- patient <> appointment
+and a.apnt_cncl_yn = 'N'
+and to_char(a.apnt_ymd, 'YYYYMMDD') = '20220413'
+order by a.apnt_ymd;
+
+#13. 5월 식품들의 총 매출 조회하기(Lv4)
+select product_id, product_name, (price * amount) from (
+SELECT fp.product_id, fp.product_name, fp.price, sum(fo.amount) as amount from food_product fp, food_order fo
+where fp.product_id = fo.product_id
+and to_char(fo.produce_date, 'YYYYMM') = '202205'
+group by fp.product_id, fp.product_name, fp.price
+)
+order by (price * amount) desc, product_id;
+
+#14. 식품분류별 가장 비싼 식품의 정보 조회하기(Lv4)
+SELECT fp.category, fp.price, fp.product_name from food_product fp
+where fp.price = (select max(price) from food_product where category = fp.category group by category)
+and fp.category in ('과자', '국', '김치', '식용유')
+order by fp.price desc;
+
+#15. 보호소에서 중성화한 동물(Lv4)
+SELECT ins.animal_id, ins.animal_type, ins.name from animal_ins ins, animal_outs outs
+where ins.animal_id = outs.animal_id
+and ins.sex_upon_intake not in ('Spayed Female', 'Neutered Male')
+and outs.sex_upon_outcome in ('Spayed Female', 'Neutered Male')
+order by ins.animal_id;
+
+
